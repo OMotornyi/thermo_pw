@@ -35,6 +35,7 @@ SUBROUTINE do_lanczos()
   USE ions_base,             ONLY : nat
   USE cell_base,             ONLY : at
   USE io_global,             ONLY : stdout, ionode
+  USE io_files,             ONLY : diropn, tmp_dir, wfc_dir
   USE klist,                 ONLY : xk, wk, ngk, igk_k, lgauss, ltetra
   USE qpoint,                ONLY : nksq, ikks, ikqs
   USE gvecs,                 ONLY : doublegrid

@@ -73,7 +73,8 @@ SUBROUTINE phq_readin_tpw()
                             lall_tensor, lchimag, start_freq, last_freq, &
                             lfreq_ev, linear_im_freq
   USE lr_lanczos,    ONLY : llanczos, lanczos_steps, lanczos_steps_ext, &
-                            extrapolation, only_spectrum
+                            extrapolation, only_spectrum, lanczos_restart, &
+                            lanczos_restart_step
   USE lr_global,     ONLY : pseudo_hermitian
   USE lr_cg,         ONLY : lcg
   USE images_omega,   ONLY : comp_f
@@ -128,7 +129,7 @@ SUBROUTINE phq_readin_tpw()
                        elph_nbnd_min, elph_nbnd_max, el_ph_ngauss, &
                        el_ph_nsigma, el_ph_sigma,  &
                        electron_phonon, lfreq_ev, linear_im_freq,&
-                       llanczos, lanczos_steps, lanczos_steps_ext, &
+                       llanczos, lanczos_restart,lanczos_restart_step, lanczos_steps, lanczos_steps_ext, &
                        extrapolation, only_spectrum, pseudo_hermitian, lcg, &
                        delta_freq, start_freq, last_freq,     &
                        lmagnon, lcharge, lall_tensor, lchimag, &
@@ -200,6 +201,7 @@ SUBROUTINE phq_readin_tpw()
   ! the number of calculated frequencies but only the first and the
   ! last are read in input, the intermediate ones are computed
   ! llanczos : a lanczos algorithm is used at finite frequencies
+  ! lanczos_restart : laczos recursion will be restarted
   ! lanczos_steps : number of lanczos steps
   ! lanczos_steps_ext : number of extrapolated lanczos steps
   ! extrapolation : extrapolation method
@@ -302,6 +304,8 @@ SUBROUTINE phq_readin_tpw()
   linear_im_freq=.FALSE.
   lfreq_ev=.FALSE.
   llanczos=.FALSE.
+  lanczos_restart=.FALSE.
+  lanczos_restart_step=0
   lanczos_steps=2000
   lanczos_steps_ext=10000
   extrapolation='average'
@@ -370,6 +374,8 @@ SUBROUTINE phq_readin_tpw()
   CALL mp_bcast(lfreq_ev, meta_ionode_id, world_comm  )
   CALL mp_bcast(linear_im_freq, meta_ionode_id, world_comm  )
   CALL mp_bcast(llanczos, meta_ionode_id, world_comm  )
+  CALL mp_bcast(lanczos_restart, meta_ionode_id, world_comm  )
+  CALL mp_bcast(lanczos_restart_step, meta_ionode_id, world_comm  )
   CALL mp_bcast(lanczos_steps, meta_ionode_id, world_comm  )
   CALL mp_bcast(lanczos_steps_ext, meta_ionode_id, world_comm  )
   CALL mp_bcast(extrapolation, meta_ionode_id, world_comm  )

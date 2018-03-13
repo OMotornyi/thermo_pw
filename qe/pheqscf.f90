@@ -115,6 +115,11 @@ SUBROUTINE pheqscf()
         IF (only_spectrum) THEN
            CALL read_lanczos_chain()
         ELSE
+         !  IF (ionode) THEN
+         !   CLOSE(UNIT=iulanczos, STATUS='keep') 
+         !   OPEN(UNIT=iulanczos, FILE='dynamical_matrices/save_chain',&
+         !   STATUS='replace', POSITION='append', ERR=100, IOSTAT=ios)
+         !  ENDIF
            IF (pseudo_hermitian) THEN
               CALL do_lanczos_psh()
            ELSE

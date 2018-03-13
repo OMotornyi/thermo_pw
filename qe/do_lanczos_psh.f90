@@ -30,12 +30,12 @@ SUBROUTINE do_lanczos_psh()
   !     d) computes (H-Se) dpsi
   !     e) adds to it the screening term P_c^+ Delta V_{SCF} | psi > if needed
   !     f) apply S^-1 if needed
-  !     g) read/writes d0psi and d0psi2 from files in tmp_dir
   !
   USE kinds,                 ONLY : DP
   USE ions_base,             ONLY : nat
   USE cell_base,             ONLY : at
   USE io_global,             ONLY : stdout, ionode
+  USE io_files,             ONLY : diropn, tmp_dir, wfc_dir
   USE klist,                 ONLY : xk, wk, ngk, igk_k, lgauss, ltetra
   USE qpoint,                ONLY : nksq, ikks, ikqs
   USE gvecs,                 ONLY : doublegrid
@@ -59,13 +59,15 @@ SUBROUTINE do_lanczos_psh()
   USE control_lr,            ONLY : alpha_pv, nbnd_occ, lgamma
   USE lrus,                  ONLY : int3, int3_paw
   USE dv_of_drho_lr,         ONLY : dv_of_drho
-  USE lr_global,             ONLY : rpert, evc0, evq0, sevq0, d0psi, d0psi2
-  USE lr_lanczos,            ONLY : lanczos_steps, evc1, sevc1, evc1_new
+  USE lr_global,             ONLY : rpert, evc0, evq0, sevq0, d0psi,d0psi2,size_evc1
+  USE lr_lanczos,            ONLY : lanczos_steps, evc1, sevc1, evc1_new,&
+                                    &iund0psi,nwordd0psi,lanczos_restart,lanczos_restart_step
   USE units_ph,              ONLY : lrwfc, iuwfc
   USE buffers,               ONLY : get_buffer
   USE mp_pools,              ONLY : inter_pool_comm
   USE mp_bands,              ONLY : intra_bgrp_comm, ntask_groups
   USE mp,                    ONLY : mp_sum
+ ! USE lanczos_write_restart, ONLY : lanczos_write_restart
 
   IMPLICIT NONE
 
@@ -81,16 +83,20 @@ SUBROUTINE do_lanczos_psh()
                    tg_psic(:,:)          
 
   INTEGER :: kter, iter, iter0, ipol, jpol, ibnd, ik, ikp, ikk, ikq, is, &
-             npw, npwq, incr, v_siz, ig
+             npw, npwq, incr, v_siz, ig, iter_restart
   ! counters or indices
   LOGICAL :: lmet
 
   REAL(DP) :: weight, alpha_pv0, anorm
   ! weight of k points and store alpha_pv
   REAL(DP) :: tcpu, get_clock
+  LOGICAL :: exst,rflag
+  INTEGER, EXTERNAL :: find_free_unit
+  CHARACTER(len=6), EXTERNAL :: int_to_char
 
   CALL start_clock ('do_lanczos')
-
+ nwordd0psi = 2 * nbnd * npwx * npol * nksq
+ !nwordd0psi = size_evc1/rpert
   alpha_pv0=alpha_pv
   lmet = (lgauss .OR. ltetra)
   IF (lmet.AND.lgamma) THEN
@@ -99,7 +105,6 @@ SUBROUTINE do_lanczos_psh()
      IF (lmet) alpha_pv=0.0_DP
   ENDIF
 
-  iter0=0
 
   ALLOCATE (dvscfin( dfftp%nnr, nspin_mag, rpert))
   IF (doublegrid) THEN
@@ -123,13 +128,22 @@ SUBROUTINE do_lanczos_psh()
      incr = fftx_ntgrp(dffts)
      !
   ENDIF
+     IF ( lanczos_restart == .TRUE.) THEN
+!          evc1(:,:,:,:)= (0.0d0,0.0d0)  
+          CALL lr_restart (iter0,rflag)
+          iter0=iter0+1
+     ELSE
+       iter0=1
+     ENDIF
   !
   !   The outside loop is over the lanczos steps
   !
-  DO kter = 1, lanczos_steps+1
+!  DO kter = 1, lanczos_steps+1
+  DO kter = iter0, lanczos_steps+1
 
 !     write(6,*) 'kter', kter
-     iter = kter + iter0
+!     iter = kter + iter0
+     iter = kter
 !
 !   A loop over k points
 !
@@ -142,7 +156,8 @@ SUBROUTINE do_lanczos_psh()
         !
         CALL init_us_2 (npwq, igk_k(1,ikq), xk (1, ikq), vkb)
         !
-        IF (iter==1) THEN
+        !IF (iter==1) THEN
+        IF (iter==iter0) THEN
            !
            ! at the first iteration reads unperturbed wavefuctions psi_k 
            ! in G_space, for all bands. When q /= 0 reads also evq 
@@ -298,10 +313,50 @@ SUBROUTINE do_lanczos_psh()
            ENDIF
         ENDDO
      ENDDO
-     !
+     If (iter==1) THEN     !
+              iund0psi = find_free_unit()
+                CALL diropn ( iund0psi, 'd0psi.'// &
+                 & trim(int_to_char(ipol)), nwordd0psi, exst)
+                   CALL davcio(d0psi(1,1,1,1),nwordd0psi,iund0psi,1,1)
+                    !
+ !              WRITE (123, *)d0psi
+!               d0psi(:,:,:,:)=(0.0d0,0.0d0)
+                        CLOSE( UNIT = iund0psi)
+                CALL diropn ( iund0psi, 'd0psi2.'// &
+                 & trim(int_to_char(ipol)), nwordd0psi, exst)
+                   CALL davcio(d0psi2(1,1,1),nwordd0psi,iund0psi,1,1)
+                        CLOSE( UNIT = iund0psi)
+!               WRITE (124, *)d0psi2
+!               d0psi2(:,:,:)=(0.0d0,0.0d0)
+                CALL diropn ( iund0psi, 'd0psi.'// &
+                 & trim(int_to_char(ipol)), nwordd0psi, exst)
+                   CALL davcio(d0psi(1,1,1,1),nwordd0psi,iund0psi,1,-1)
+                    !
+!               WRITE (125, *)d0psi
+                        CLOSE( UNIT = iund0psi)
+                CALL diropn ( iund0psi, 'd0psi2.'// &
+                 & trim(int_to_char(ipol)), nwordd0psi, exst)
+                   CALL davcio(d0psi2(1,1,1),nwordd0psi,iund0psi,1,-1)
+                        CLOSE( UNIT = iund0psi)
+!               WRITE (126, *)d0psi2
+     ENDIF
      !  here we do the lanczos step of iteration iter-1
+     IF (lanczos_restart == .TRUE. .AND. iter == iter0) THEN
+
+         iund0psi = find_free_unit()
+         CALL diropn ( iund0psi, 'd0psi.'// &
+                      & trim(int_to_char(ipol)), nwordd0psi, exst)
+         CALL davcio(d0psi(1,1,1,1),nwordd0psi,iund0psi,1,-1)
+         CLOSE( UNIT = iund0psi)
+         CALL diropn ( iund0psi, 'd0psi2.'// &
+                      & trim(int_to_char(ipol)), nwordd0psi, exst)
+         CALL davcio(d0psi2(1,1,1),nwordd0psi,iund0psi,1,-1)
+         CLOSE( UNIT = iund0psi)
+     ENDIF 
      !
      IF (iter > 1) CALL psh_lanczos_step(iter-1,.FALSE.)
+     !IF (lanczos_restart_step>0 .AND. iter /= 1 .AND. ( mod(iter-1,lanczos_restart_step)==0))CALL lanczos_write_restart(iter-1)
+     IF (iter==lanczos_steps+1) CALL lanczos_write_restart(iter-1)
      IF (iter==lanczos_steps+1) EXIT
      !
      !  The independent particle approximation corresponds to set to zero 
@@ -448,6 +503,10 @@ SUBROUTINE do_lanczos_psh()
 !
      CALL newdq(dvscfin,rpert)
 
+!     IF (iter == 200 .AND. lanczos_restart == .TRUE.) THEN
+!          evc1(:,:,:,:)= (0.0d0,0.0d0)  
+!          CALL lr_restart (iter_restart,rflag)
+!     ENDIF
      tcpu = get_clock ('PHONON')
      WRITE( stdout, '(/,5x," iter # ",i8," total cpu time :",f8.1,&
                                   &" secs ")') iter, tcpu
@@ -456,6 +515,8 @@ SUBROUTINE do_lanczos_psh()
      !
   ENDDO  ! Lanczos iterations
 
+!     IF (iter == 200)  
+!CALL lanczos_write_restart(iter)
   DEALLOCATE (aux1)
   DEALLOCATE (dbecsum)
   IF (doublegrid) DEALLOCATE (dvscfins)

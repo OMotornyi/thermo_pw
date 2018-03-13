@@ -53,8 +53,10 @@ h_pcg_step.o \
 initialize_ph.o \
 kpoint_grid.o \
 irrek.o \
+lanczos_write_restart.o \
 lr_dot.o \
 lr_us.o  \
+lr_restart.o \
 lr_sm1_psi.o \
 mix_pot.o \
 nh_lanczos_step.o \
@@ -91,7 +93,6 @@ set_fxc_tran.o \
 set_intq_nc.o \
 set_kplusq.o \
 set_kup_and_kdw.o \
-setup.o \
 solve_e.o \
 solve_e_fpolc.o \
 solve_eq.o \
