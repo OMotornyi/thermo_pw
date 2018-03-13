@@ -147,7 +147,8 @@ MODULE lr_lanczos
   SAVE
 
   LOGICAL :: llanczos  ! if .TRUE. the lanczos algorithm is used
-
+  LOGICAL :: lanczos_restart !if .TRUE. the laczos recursion will be restarted
+                             !from the last saved point
   COMPLEX(KIND=DP), ALLOCATABLE :: &
 
        evc1_old(:,:,:,:), &    ! response wavefunctions in the pw basis (last
@@ -168,8 +169,10 @@ MODULE lr_lanczos
   COMPLEX(kind=DP), ALLOCATABLE :: zeta_store(:,:,:) ! perturbation projected 
 
   INTEGER :: &
-       lanczos_steps, &  ! steps of the Lanczos chain
-       lanczos_steps_ext ! steps of the extrapolated lanczos chain
+       lanczos_steps, &     ! steps of the Lanczos chain
+       lanczos_steps_ext,&  ! steps of the extrapolated lanczos chain
+       lanczos_restart_step ! interval for writing restart points. 0 means no
+                            ! restart points
 
   CHARACTER(LEN=256) :: extrapolation ! extrapolation type
 
@@ -177,7 +180,8 @@ MODULE lr_lanczos
   COMPLEX(KIND=DP), ALLOCATABLE :: bbk(:,:,:)  ! coefficients of S^{-1}
   COMPLEX(KIND=DP), ALLOCATABLE :: bbnc(:,:,:) ! coefficients of the inverse
                                                ! of S
-  INTEGER :: iulanczos          ! iunit where the Lanczos chain is saved
+  INTEGER :: iulanczos, iund0psi,iunrestart          ! iunit where the Lanczos chain is saved
+  INTEGER :: nwordd0psi,nwordrestart
 
   LOGICAL :: only_spectrum      ! if .TRUE. assumes that the Lanczos chain
                                 ! coefficients are on file
