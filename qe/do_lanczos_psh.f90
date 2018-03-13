@@ -30,6 +30,7 @@ SUBROUTINE do_lanczos_psh()
   !     d) computes (H-Se) dpsi
   !     e) adds to it the screening term P_c^+ Delta V_{SCF} | psi > if needed
   !     f) apply S^-1 if needed
+  !     g) read/writes d0psi and d0psi2 from files in tmp_dir
   !
   USE kinds,                 ONLY : DP
   USE ions_base,             ONLY : nat
