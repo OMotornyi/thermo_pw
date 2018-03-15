@@ -146,11 +146,15 @@ REAL(kind=dp) :: norm0(3)
   iunrestart = find_free_unit()
   CALL diropn ( iunrestart, 'restart_lanczos.'//trim(int_to_char(1)), nwordrestart, exst)
   !
- CALL davcio(evc1(:,:,:,1),nwordrestart,iunrestart,1,-1)
- CALL davcio(evc1(:,:,:,2),nwordrestart,iunrestart,2,-1)
- CALL davcio(evc1_old(:,:,:,1),nwordrestart,iunrestart,3,-1)
- CALL davcio(evc1_old(:,:,:,2),nwordrestart,iunrestart,4,-1)
+!CALL davcio(evc1(:,:,:,1),nwordrestart,iunrestart,1,-1)
+!CALL davcio(evc1(:,:,:,2),nwordrestart,iunrestart,2,-1)
+!CALL davcio(evc1_old(:,:,:,1),nwordrestart,iunrestart,3,-1)
+!CALL davcio(evc1_old(:,:,:,2),nwordrestart,iunrestart,4,-1)
   !
+ CALL davcio(evc1(:,:,:,:),nwordrestart,iunrestart,1,-1)
+ !CALL davcio(evc1(1,1,1,2),nwordrestart,iunrestart,2,-1)
+ CALL davcio(evc1_old(:,:,:,:),nwordrestart,iunrestart,2,-1)
+ !CALL davcio(evc1_old(1,1,1,2),nwordrestart,iunrestart,4,-1)
   CLOSE( unit = iunrestart)
   !
   ! Optical case: read the response charge density

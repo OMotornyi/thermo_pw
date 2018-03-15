@@ -134,6 +134,7 @@ SUBROUTINE pheqscf()
                                                  qnorm**2/tpiba2
            CALL write_chi_on_disk(iu)
         ENDDO
+!        PRINT *, "before deallocate"
         CALL deallocate_lanczos()
         IF (ionode) CLOSE(UNIT=iulanczos, STATUS='keep')
      ELSE

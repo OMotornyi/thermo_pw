@@ -355,7 +355,7 @@ SUBROUTINE do_lanczos_psh()
      ENDIF 
      !
      IF (iter > 1) CALL psh_lanczos_step(iter-1,.FALSE.)
-     !IF (lanczos_restart_step>0 .AND. iter /= 1 .AND. ( mod(iter-1,lanczos_restart_step)==0))CALL lanczos_write_restart(iter-1)
+     IF (lanczos_restart_step>0 .AND. iter /= 1 .AND. ( mod(iter-1,lanczos_restart_step)==0))CALL lanczos_write_restart(iter-1)
      IF (iter==lanczos_steps+1) CALL lanczos_write_restart(iter-1)
      IF (iter==lanczos_steps+1) EXIT
      !

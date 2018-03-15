@@ -19,7 +19,6 @@
   IMPLICIT NONE
 
   INTEGER :: ncopy
-
   rpert=1
   IF (lgamma) rpert=3
   ncopy=2
@@ -94,7 +93,7 @@
   USE lrus,       ONLY : bbg
 
   IMPLICIT NONE
-
+  INTEGER (KIND=8) :: stat_d
   IF (ASSOCIATED(sevq0,evq0)) THEN
      NULLIFY(sevq0)
   ELSEIF(ASSOCIATED(sevq0)) THEN
@@ -108,19 +107,24 @@
   ENDIF
 
   IF (ALLOCATED(evc0)) DEALLOCATE(evc0)
-
+! IF (ALLOCATED(evc1_old)) THEN 
+!    PRINT *, "IT IS ALLOCATED"
+! ELSE 
+!  PRINT *, "IT IS NOT ALLOCATED"
+!  ENDIF
   IF (ALLOCATED(evc1_old)) DEALLOCATE(evc1_old)
-  IF (ALLOCATED(evc1)) DEALLOCATE(evc1)
-  IF (ALLOCATED(evc1_new)) DEALLOCATE(evc1_new)
-   
-  IF (ALLOCATED(sevc1)) DEALLOCATE(sevc1)
-   
-  IF (ALLOCATED(d0psi)) DEALLOCATE(d0psi)
-  IF (ALLOCATED(d0psi2)) DEALLOCATE(d0psi2)
-
-  IF (ALLOCATED(beta_store_ext)) DEALLOCATE(beta_store_ext)
-  IF (ALLOCATED(gamma_store_ext)) DEALLOCATE(gamma_store_ext)
-  IF (ALLOCATED(zeta_store)) DEALLOCATE(zeta_store)
+! PRINT *, stat_d
+ IF (ALLOCATED(evc1)) DEALLOCATE(evc1)
+ IF (ALLOCATED(evc1_new)) DEALLOCATE(evc1_new)
+!  
+ IF (ALLOCATED(sevc1)) DEALLOCATE(sevc1)
+!  
+ IF (ALLOCATED(d0psi)) DEALLOCATE(d0psi)
+ IF (ALLOCATED(d0psi2)) DEALLOCATE(d0psi2)
+!
+ IF (ALLOCATED(beta_store_ext)) DEALLOCATE(beta_store_ext)
+ IF (ALLOCATED(gamma_store_ext)) DEALLOCATE(gamma_store_ext)
+ IF (ALLOCATED(zeta_store)) DEALLOCATE(zeta_store)
 
   IF (ALLOCATED(bbg)) DEALLOCATE(bbg)
   IF (ALLOCATED(bbk)) DEALLOCATE(bbk)
