@@ -147,8 +147,6 @@ MODULE lr_lanczos
   SAVE
 
   LOGICAL :: llanczos  ! if .TRUE. the lanczos algorithm is used
-  LOGICAL :: lanczos_restart !if .TRUE. the laczos recursion will be restarted
-                             !from the last saved point
   COMPLEX(KIND=DP), ALLOCATABLE :: &
 
        evc1_old(:,:,:,:), &    ! response wavefunctions in the pw basis (last

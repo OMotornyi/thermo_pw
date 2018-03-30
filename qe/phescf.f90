@@ -259,7 +259,7 @@ IF (ionode) THEN
    filename='dynamical_matrices/epsilon_re'
    IF (my_image_id>0) filename=TRIM(filename)//'_'//int_to_char(my_image_id)
    INQUIRE(FILE=TRIM(filename), exist=exst)
-   IF (exst) THEN
+       IF (exst.AND.iu>1) THEN
       OPEN (UNIT=iu_epsil, FILE=TRIM(filename), STATUS='old',&
                               POSITION='append', FORM='formatted')
    ELSE
@@ -280,7 +280,7 @@ IF (ionode) THEN
    filename='dynamical_matrices/epsilon_im'
    IF (my_image_id>0) filename=TRIM(filename)//'_'//int_to_char(my_image_id)
    INQUIRE(FILE=TRIM(filename), exist=exst)
-   IF (exst) THEN
+       IF (exst.AND.iu>1) THEN
       OPEN (UNIT=iu_epsil, FILE=TRIM(filename), STATUS='old',&
                              POSITION='append', FORM='formatted')
    ELSE
@@ -301,7 +301,7 @@ IF (ionode) THEN
    filename='dynamical_matrices/epsilonm1_re'
    IF (my_image_id>0) filename=TRIM(filename)//'_'//int_to_char(my_image_id)
    INQUIRE(FILE=TRIM(filename), exist=exst)
-   IF (exst) THEN
+       IF (exst.AND.iu>1) THEN
       OPEN (UNIT=iu_epsil, FILE=TRIM(filename), STATUS='old', &
                                        POSITION='append', FORM='formatted')
    ELSE
@@ -320,7 +320,7 @@ IF (ionode) THEN
    filename='dynamical_matrices/epsilonm1_im'
    IF (my_image_id>0) filename=TRIM(filename)//'_'//int_to_char(my_image_id)
    INQUIRE(FILE=TRIM(filename), exist=exst)
-   IF (exst) THEN
+       IF (exst.AND.iu>1) THEN
       OPEN (UNIT=iu_epsil, FILE=TRIM(filename), STATUS='old', &
                                       POSITION='append', FORM='formatted')
    ELSE

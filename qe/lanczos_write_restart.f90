@@ -19,8 +19,8 @@ SUBROUTINE lanczos_write_restart(LR_iteration)
   USE io_files,             ONLY : tmp_dir, prefix, diropn
   
   USE lr_lanczos,   ONLY : evc1, evc1_new, evc1_old, sevc1, beta_store, &
-                             gamma_store, zeta_store,iulanczos,iunrestart,nwordrestart
-  USE lr_global,    ONLY :  rpert,size_evc1
+                           gamma_store, zeta_store,iulanczos,iunrestart,nwordrestart
+  USE lr_global,    ONLY :  rpert,size_evc1,pseudo_hermitian
 
   USE wvfct,                ONLY : nbnd, npwx
   USE fft_base,             ONLY : dfftp
@@ -39,7 +39,7 @@ REAL(kind=dp) :: norm0(3)
   !
   INTEGER, EXTERNAL :: find_free_unit
   INTEGER, INTENT(IN) :: LR_iteration
-  INTEGER :: i, j, pol_index,ibnd_occ,ibnd_virt
+  INTEGER :: i, j, k, pol_index,ibnd_occ,ibnd_virt
   CHARACTER (len=24) :: bgz_suffix
   CHARACTER(len=256) :: tempfile, filename
   LOGICAL :: exst
@@ -67,11 +67,7 @@ REAL(kind=dp) :: norm0(3)
   ! Writing beta, gamma and zeta coefficients.
    bgz_suffix = TRIM ( ".beta_gamma_z." )
   !
-!  IF (eels) THEN
      filename = trim(prefix) // trim(bgz_suffix) // trim("dat")
-!  ELSE
-!     filename = trim(prefix) // trim(bgz_suffix) // trim(int_to_char(LR_polarization))
-!  ENDIF
   tempfile = trim(tmp_dir) // trim(filename)
   !
   OPEN (158, file = tempfile, form = 'formatted', status = 'unknown')
@@ -122,7 +118,9 @@ REAL(kind=dp) :: norm0(3)
      ! This is absolutely necessary for cross platform compatibility
      !
      DO j=1,rpert
-      WRITE(158,*) zeta_store (j,j,i)
+      DO k=1,rpert
+       WRITE(158,*) zeta_store (j,k,i)
+      ENDDO
      ENDDO
      !
   ENDDO
@@ -134,32 +132,12 @@ REAL(kind=dp) :: norm0(3)
   WRITE(158,*) beta_store(LR_iteration)             
   WRITE(158,*) gamma_store(LR_iteration)             
   DO j=1,rpert                        
-    WRITE(158,*) zeta_store (j,j,LR_iteration)        
+      DO k=1,rpert
+       WRITE(158,*) zeta_store (j,k,i)
+      ENDDO
   ENDDO
   !
   CLOSE(158)
-! !
-! ! Optical case: writing F
-! !
-! IF (project .AND. .NOT.eels) THEN
-!    !
-!    filename = trim(prefix) // ".projection." //trim(int_to_char(LR_polarization))
-!    tempfile = trim(tmp_dir) // trim(filename)
-!    !
-!    OPEN (158, file = tempfile, form = 'formatted', status = 'unknown')
-!    WRITE(158,*) LR_iteration
-!    WRITE(158,*) nbnd        ! number of filled bands
-!    WRITE(158,*) nbnd_total  !total number of bands
-!    !
-!    DO ibnd_occ=1,nbnd
-!       DO ibnd_virt=1,(nbnd_total-nbnd)
-!          WRITE(158,*) F(ibnd_occ,ibnd_virt,pol_index)
-!       ENDDO
-!    ENDDO
-!    !
-!    CLOSE(158)
-!    !
-! ENDIF
 ! !
 #if defined(__MPI)
   ENDIF
@@ -174,115 +152,27 @@ REAL(kind=dp) :: norm0(3)
     ! Writing wavefuncion files for restart
     !
     nwordrestart = 2 * nbnd * npwx * npol * nksq
+    nwordrestart = 2 * nbnd * npwx * npol * nksq*rpert
+    IF (.NOT. pseudo_hermitian) nwordrestart=nwordrestart*2
 !    nwordrestart = size_evc1
     !
               iunrestart = find_free_unit()
     CALL diropn ( iunrestart,'restart_lanczos.'//trim(int_to_char(1)),nwordrestart, exst)
     !
-  ! CALL davcio(evc1(:,:,:,1),nwordrestart,iunrestart,1,1)
-  ! CALL davcio(evc1(:,:,:,2),nwordrestart,iunrestart,2,1)
-  ! CALL davcio(evc1_old(:,:,:,1),nwordrestart,iunrestart,3,1)
-  ! CALL davcio(evc1_old(:,:,:,2),nwordrestart,iunrestart,4,1)
     !
-    CALL davcio(evc1(:,:,:,:),nwordrestart,iunrestart,1,1)
-    !CALL davcio(evc1(1,1,1,2),nwordrestart,iunrestart,2,1)
-    CALL davcio(evc1_old(:,:,:,:),nwordrestart,iunrestart,2,1)
-    !CALL davcio(evc1_old(1,1,1,2),nwordrestart,iunrestart,4,1)
+!  IF (pseudo_hermitian) THEN
+     CALL davcio(evc1(:,:,:,:),nwordrestart,iunrestart,1,1)
+     CALL davcio(evc1_old(:,:,:,:),nwordrestart,iunrestart,2,1)
+!  ELSE
+!    CALL davcio(evc1(:,:,:,1),nwordrestart,iunrestart,1,1)
+!    CALL davcio(evc1(:,:,:,2),nwordrestart,iunrestart,2,1)
+!    CALL davcio(evc1_old(:,:,:,1),nwordrestart,iunrestart,3,1)
+!    CALL davcio(evc1_old(:,:,:,2),nwordrestart,iunrestart,4,1)
+!  ENDIF
     CLOSE( unit = iunrestart)
-!   !
-!   ! Optical case: Writing charge response density for restart
-!   !
-!   IF (charge_response == 1 .AND. .NOT.eels) THEN
-!      !
-!      IF (resonance_condition) THEN
-!         CALL diropn ( iunrestart,
-!         C'restart_lanczos-rho_tot.'//trim(int_to_char(LR_polarization)),
-!         C2*dfftp%nnr*nspin_mag, exst)
-!         CALL
-!         Cdavcio(rho_1_tot_im(:,:),2*dfftp%nnr*nspin_mag,iunrestart,1,1)
-!         CLOSE( unit = iunrestart)
-!      ELSE
-!         CALL diropn ( iunrestart,
-!         C'restart_lanczos-rho_tot.'//trim(int_to_char(LR_polarization)),
-!         C2*dfftp%nnr*nspin_mag, exst)
-!         CALL
-!         Cdavcio(rho_1_tot(:,:),2*dfftp%nnr*nspin_mag,iunrestart,1,1)
-!         CLOSE( unit = iunrestart)
-!      ENDIF
-!      !
-!   ENDIF
-!   IF (sum_rule == -2 .AND. .NOT.eels) THEN
-!      !
-!      CALL diropn ( iunrestart,
-!      C'restart_lanczos-sum-2.'//trim(int_to_char(LR_polarization)),
-!      C2*dfftp%nnr*nspin_mag, exst)
-!      CALL
-!      Cdavcio(rho_1_tot_im(:,:),2*dfftp%nnr*nspin_mag,iunrestart,1,1)
-!      CLOSE( unit = iunrestart)
-!      !
-!   ENDIF
-!
 !   !
     RETURN
     !
 !-----------------------------------------------------------------------
-CONTAINS
-SUBROUTINE davcio_int( vect, nword, unit, nrec, io )
-  !----------------------------------------------------------------------------
-  !
-  ! ... direct-access vector input/output
-  ! ... read/write nword words starting from the address specified by vect
-  !
-  USE kinds,     ONLY : DP
-  !
-  IMPLICIT NONE
-  !
-  INTEGER, INTENT(IN) :: nword, unit, nrec, io
-    ! input: the dimension of vect
-    ! input: the unit where to read/write
-    ! input: the record where to read/write
-    ! input: flag if < 0 reading if > 0 writing
-  REAL(DP), INTENT(INOUT) :: vect(nword)
-   ! input/output: the vector to read/write
-  !
-  INTEGER :: ios
-    ! integer variable for I/O control
-  LOGICAL :: opnd
-  CHARACTER*256 :: name
-  !
-  !
-  CALL start_clock( 'davcio' )
-  !
-  IF ( unit  <= 0 ) CALL errore(  'davcio', 'wrong unit', 1 )
-  IF ( nrec  <= 0 ) CALL errore(  'davcio', 'wrong record number', 2 )
-  IF ( nword <= 0 ) CALL errore(  'davcio', 'wrong record length', 3 )
-  IF ( io    == 0 ) CALL infomsg( 'davcio', 'nothing to do?' )
-  !
-  INQUIRE( UNIT = unit, OPENED = opnd, NAME = name )
-  !
-  IF ( .NOT. opnd ) &
-     CALL errore(  'davcio', 'unit is not opened', unit )
-  !
-  ios = 0
-  !
-  IF ( io < 0 ) THEN
-     !
-     READ( UNIT = unit, REC = nrec, IOSTAT = ios ) vect
-     IF ( ios /= 0 ) CALL errore( 'davcio', &
-         & 'error while reading from file "' // TRIM(name) // '"', unit )
-     !
-  ELSE IF ( io > 0 ) THEN
-     !
-     WRITE( UNIT = unit, REC = nrec, IOSTAT = ios ) vect
-     IF ( ios /= 0 ) CALL errore( 'davcio', &
-         & 'error while writing from file "' // TRIM(name) // '"', unit )
-     !
-  END IF
-  !
-  CALL stop_clock( 'davcio' )
-  !
-  RETURN
-  !
-END SUBROUTINE davcio_int
 
 END SUBROUTINE lanczos_write_restart

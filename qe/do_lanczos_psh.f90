@@ -55,13 +55,13 @@ SUBROUTINE do_lanczos_psh()
   USE paw_onecenter,         ONLY : paw_dpotential
   USE paw_symmetry,          ONLY : paw_desymmetrize
   USE paw_add_symmetry,      ONLY : paw_deqsymmetrize
-  USE control_ph,            ONLY : lnoloc,  lgamma_gamma
+  USE control_ph,            ONLY : lnoloc,  lgamma_gamma,recover
   USE control_lr,            ONLY : alpha_pv, nbnd_occ, lgamma
   USE lrus,                  ONLY : int3, int3_paw
   USE dv_of_drho_lr,         ONLY : dv_of_drho
   USE lr_global,             ONLY : rpert, evc0, evq0, sevq0, d0psi,d0psi2,size_evc1
   USE lr_lanczos,            ONLY : lanczos_steps, evc1, sevc1, evc1_new,&
-                                    &iund0psi,nwordd0psi,lanczos_restart,lanczos_restart_step
+                                    &iund0psi,nwordd0psi,lanczos_restart_step
   USE units_ph,              ONLY : lrwfc, iuwfc
   USE buffers,               ONLY : get_buffer
   USE mp_pools,              ONLY : inter_pool_comm
@@ -96,7 +96,6 @@ SUBROUTINE do_lanczos_psh()
 
   CALL start_clock ('do_lanczos')
  nwordd0psi = 2 * nbnd * npwx * npol * nksq
- !nwordd0psi = size_evc1/rpert
   alpha_pv0=alpha_pv
   lmet = (lgauss .OR. ltetra)
   IF (lmet.AND.lgamma) THEN
@@ -128,8 +127,7 @@ SUBROUTINE do_lanczos_psh()
      incr = fftx_ntgrp(dffts)
      !
   ENDIF
-     IF ( lanczos_restart == .TRUE.) THEN
-!          evc1(:,:,:,:)= (0.0d0,0.0d0)  
+     IF ( recover == .TRUE.) THEN
           CALL lr_restart (iter0,rflag)
           iter0=iter0+1
      ELSE
@@ -138,11 +136,8 @@ SUBROUTINE do_lanczos_psh()
   !
   !   The outside loop is over the lanczos steps
   !
-!  DO kter = 1, lanczos_steps+1
   DO kter = iter0, lanczos_steps+1
 
-!     write(6,*) 'kter', kter
-!     iter = kter + iter0
      iter = kter
 !
 !   A loop over k points
@@ -156,7 +151,6 @@ SUBROUTINE do_lanczos_psh()
         !
         CALL init_us_2 (npwq, igk_k(1,ikq), xk (1, ikq), vkb)
         !
-        !IF (iter==1) THEN
         IF (iter==iter0) THEN
            !
            ! at the first iteration reads unperturbed wavefuctions psi_k 
@@ -314,49 +308,40 @@ SUBROUTINE do_lanczos_psh()
         ENDDO
      ENDDO
      If (iter==1) THEN     !
+         DO ipol=1,rpert
               iund0psi = find_free_unit()
                 CALL diropn ( iund0psi, 'd0psi.'// &
                  & trim(int_to_char(ipol)), nwordd0psi, exst)
-                   CALL davcio(d0psi(1,1,1,1),nwordd0psi,iund0psi,1,1)
+                   CALL davcio(d0psi(1,1,1,ipol),nwordd0psi,iund0psi,1,1)
                     !
- !              WRITE (123, *)d0psi
-!               d0psi(:,:,:,:)=(0.0d0,0.0d0)
                         CLOSE( UNIT = iund0psi)
+          ENDDO
+            IF (.not. lgamma) THEN
                 CALL diropn ( iund0psi, 'd0psi2.'// &
                  & trim(int_to_char(ipol)), nwordd0psi, exst)
                    CALL davcio(d0psi2(1,1,1),nwordd0psi,iund0psi,1,1)
                         CLOSE( UNIT = iund0psi)
-!               WRITE (124, *)d0psi2
-!               d0psi2(:,:,:)=(0.0d0,0.0d0)
-                CALL diropn ( iund0psi, 'd0psi.'// &
-                 & trim(int_to_char(ipol)), nwordd0psi, exst)
-                   CALL davcio(d0psi(1,1,1,1),nwordd0psi,iund0psi,1,-1)
-                    !
-!               WRITE (125, *)d0psi
-                        CLOSE( UNIT = iund0psi)
-                CALL diropn ( iund0psi, 'd0psi2.'// &
-                 & trim(int_to_char(ipol)), nwordd0psi, exst)
-                   CALL davcio(d0psi2(1,1,1),nwordd0psi,iund0psi,1,-1)
-                        CLOSE( UNIT = iund0psi)
-!               WRITE (126, *)d0psi2
+            ENDIF
      ENDIF
      !  here we do the lanczos step of iteration iter-1
-     IF (lanczos_restart == .TRUE. .AND. iter == iter0) THEN
-
+     IF (recover == .TRUE. .AND. iter == iter0) THEN
+       DO ipol=1,rpert
          iund0psi = find_free_unit()
          CALL diropn ( iund0psi, 'd0psi.'// &
                       & trim(int_to_char(ipol)), nwordd0psi, exst)
-         CALL davcio(d0psi(1,1,1,1),nwordd0psi,iund0psi,1,-1)
+         CALL davcio(d0psi(1,1,1,ipol),nwordd0psi,iund0psi,1,-1)
          CLOSE( UNIT = iund0psi)
+       ENDDO
+       IF (.NOT. lgamma) THEN 
          CALL diropn ( iund0psi, 'd0psi2.'// &
                       & trim(int_to_char(ipol)), nwordd0psi, exst)
          CALL davcio(d0psi2(1,1,1),nwordd0psi,iund0psi,1,-1)
          CLOSE( UNIT = iund0psi)
+       ENDIF
      ENDIF 
      !
      IF (iter > 1) CALL psh_lanczos_step(iter-1,.FALSE.)
-     IF (lanczos_restart_step>0 .AND. iter /= 1 .AND. ( mod(iter-1,lanczos_restart_step)==0))CALL lanczos_write_restart(iter-1)
-     IF (iter==lanczos_steps+1) CALL lanczos_write_restart(iter-1)
+     IF (lanczos_restart_step>0 .AND. iter /= 1 .AND. (iter==lanczos_steps+1 .OR. mod(iter-1,lanczos_restart_step)==0))CALL lanczos_write_restart(iter-1)
      IF (iter==lanczos_steps+1) EXIT
      !
      !  The independent particle approximation corresponds to set to zero 
@@ -503,10 +488,6 @@ SUBROUTINE do_lanczos_psh()
 !
      CALL newdq(dvscfin,rpert)
 
-!     IF (iter == 200 .AND. lanczos_restart == .TRUE.) THEN
-!          evc1(:,:,:,:)= (0.0d0,0.0d0)  
-!          CALL lr_restart (iter_restart,rflag)
-!     ENDIF
      tcpu = get_clock ('PHONON')
      WRITE( stdout, '(/,5x," iter # ",i8," total cpu time :",f8.1,&
                                   &" secs ")') iter, tcpu
@@ -515,8 +496,6 @@ SUBROUTINE do_lanczos_psh()
      !
   ENDDO  ! Lanczos iterations
 
-!     IF (iter == 200)  
-!CALL lanczos_write_restart(iter)
   DEALLOCATE (aux1)
   DEALLOCATE (dbecsum)
   IF (doublegrid) DEALLOCATE (dvscfins)

@@ -93,7 +93,6 @@
   USE lrus,       ONLY : bbg
 
   IMPLICIT NONE
-  INTEGER (KIND=8) :: stat_d
   IF (ASSOCIATED(sevq0,evq0)) THEN
      NULLIFY(sevq0)
   ELSEIF(ASSOCIATED(sevq0)) THEN
@@ -107,13 +106,7 @@
   ENDIF
 
   IF (ALLOCATED(evc0)) DEALLOCATE(evc0)
-! IF (ALLOCATED(evc1_old)) THEN 
-!    PRINT *, "IT IS ALLOCATED"
-! ELSE 
-!  PRINT *, "IT IS NOT ALLOCATED"
-!  ENDIF
   IF (ALLOCATED(evc1_old)) DEALLOCATE(evc1_old)
-! PRINT *, stat_d
  IF (ALLOCATED(evc1)) DEALLOCATE(evc1)
  IF (ALLOCATED(evc1_new)) DEALLOCATE(evc1_new)
 !  

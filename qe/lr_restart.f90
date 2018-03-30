@@ -19,9 +19,9 @@ SUBROUTINE lr_restart(iter_restart,rflag)
   USE control_flags,        ONLY : gamma_only
   USE klist,                ONLY : nks, xk, ngk, igk_k
   USE io_files,             ONLY : tmp_dir, prefix, diropn, wfc_dir
-  USE lr_lanczos,   ONLY : evc1, evc1_new, evc1_old, sevc1, beta_store, &
+  USE lr_lanczos,   ONLY : evc1, evc1_new, evc1_old, sevc1, beta_store,&
                              gamma_store, zeta_store,iulanczos,iunrestart,nwordrestart,lanczos_steps
-  USE lr_global,    ONLY :  rpert, size_evc1
+  USE lr_global,    ONLY :  rpert, size_evc1,pseudo_hermitian
   USE wvfct,                ONLY : nbnd, npwx
   USE io_global,            ONLY : ionode
   USE mp,                   ONLY : mp_bcast
@@ -40,7 +40,7 @@ SUBROUTINE lr_restart(iter_restart,rflag)
   CHARACTER (len=24) :: bgz_suffix
   ! local variables
   !
-  INTEGER :: i,ibnd,ibnd_occ,ibnd_virt,temp
+  INTEGER :: i,ibnd,ibnd_occ,ibnd_virt,temp,j,k
   INTEGER :: ik, ig, ip
   LOGICAL :: exst
   CHARACTER(len=256) :: tempfile, filename, tmp_dir_saved
@@ -68,11 +68,7 @@ REAL(kind=dp) :: norm0(3)
   ! Reading Lanczos coefficients
    bgz_suffix = TRIM ( ".beta_gamma_z." )
   !
-!  IF (eels) THEN
     filename = trim(prefix) // trim(bgz_suffix) // trim("dat")
-!  ELSE
-!    filename = trim(prefix) // trim(bgz_suffix) // trim(int_to_char(LR_polarization))
-!  ENDIF
   tempfile = trim(tmp_dir) // trim(filename)
   !
   INQUIRE (file = tempfile, exist = exst)
@@ -113,12 +109,20 @@ REAL(kind=dp) :: norm0(3)
   DO i=1,iter_restart-1
      READ(158,*,end=301,err=303) beta_store(i+1)
      READ(158,*,end=301,err=303) gamma_store(i+1)
-     READ(158,*,end=301,err=303) zeta_store (:,:,i)
+   DO j=1, rpert
+    DO k=1, rpert 
+     READ(158,*,end=301,err=303) zeta_store (j,k,i)
+    ENDDO
+   ENDDO
   ENDDO
   !
   READ(158,*,end=301,err=303) beta_store(iter_restart)
   READ(158,*,end=301,err=303) gamma_store(iter_restart)
-  READ(158,*,end=301,err=303) zeta_store (:,:,iter_restart)
+   DO j=1, rpert
+    DO k=1, rpert 
+     READ(158,*,end=301,err=303) zeta_store (j,k,i)
+    ENDDO
+   ENDDO
   !
   CLOSE(158)
   !
@@ -140,28 +144,28 @@ REAL(kind=dp) :: norm0(3)
   ! Note: Restart files are always in outdir
   ! Reading Lanczos vectors
   !
-  nwordrestart = 2 * nbnd * npwx * npol * nksq
-!  nwordrestart = size_evc1
+  nwordrestart = 2 * nbnd * npwx * npol * nksq*rpert
+    IF (.NOT. pseudo_hermitian) nwordrestart=nwordrestart*2
   !
   iunrestart = find_free_unit()
   CALL diropn ( iunrestart, 'restart_lanczos.'//trim(int_to_char(1)), nwordrestart, exst)
   !
-!CALL davcio(evc1(:,:,:,1),nwordrestart,iunrestart,1,-1)
-!CALL davcio(evc1(:,:,:,2),nwordrestart,iunrestart,2,-1)
-!CALL davcio(evc1_old(:,:,:,1),nwordrestart,iunrestart,3,-1)
-!CALL davcio(evc1_old(:,:,:,2),nwordrestart,iunrestart,4,-1)
   !
- CALL davcio(evc1(:,:,:,:),nwordrestart,iunrestart,1,-1)
- !CALL davcio(evc1(1,1,1,2),nwordrestart,iunrestart,2,-1)
- CALL davcio(evc1_old(:,:,:,:),nwordrestart,iunrestart,2,-1)
- !CALL davcio(evc1_old(1,1,1,2),nwordrestart,iunrestart,4,-1)
+!IF (pseudo_hermitian) THEN
+    CALL davcio(evc1(:,:,:,:),nwordrestart,iunrestart,1,-1)
+    CALL davcio(evc1_old(:,:,:,:),nwordrestart,iunrestart,2,-1)
+!ELSE
+!   CALL davcio(evc1(:,:,:,1),nwordrestart,iunrestart,1,-1)
+!   CALL davcio(evc1(:,:,:,2),nwordrestart,iunrestart,2,-1)
+!   CALL davcio(evc1_old(:,:,:,1),nwordrestart,iunrestart,3,-1)
+!   CALL davcio(evc1_old(:,:,:,2),nwordrestart,iunrestart,4,-1)
+!ENDIF
   CLOSE( unit = iunrestart)
   !
   ! Optical case: read the response charge density
   !
   !
   ! End of all file I/O for restart.
-  PRINT *, "RESTART READ CORRECTLY?"
   !
   RETURN
   !
